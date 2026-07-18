@@ -16,12 +16,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN mkdir -p /data /iso /novnc
 
-RUN wget https://github.com/novnc/noVNC/archive/refs/heads/master.zip -O /tmp/novnc.zip && \
+# ✅ FIX 1: Download stable noVNC tag v1.5.0 instead of broken experimental master branch
+RUN wget https://github.com/novnc/noVNC/archive/refs/tags/v1.5.0.zip -O /tmp/novnc.zip && \
     unzip /tmp/novnc.zip -d /tmp && \
-    mv /tmp/noVNC-master/* /novnc && \
-    rm -rf /tmp/novnc.zip /tmp/noVNC-master
+    mv /tmp/noVNC-1.5.0/* /novnc && \
+    rm -rf /tmp/novnc.zip /tmp/noVNC-1.5.0
 
-# Direct download link for Android-x86 (9.0 Pie)
+# Android-x86 OS Deployment Target
 ENV ISO_URL="https://archive.org/download/sjarb_android_9.0r2/android-x86_64-9.0-r2.iso"
 
 RUN echo '#!/bin/bash\n\
@@ -35,11 +36,12 @@ if [ -e /dev/kvm ]; then\n\
   MEMORY="4G"\n\
   SMP_CORES=4\n\
 else\n\
-  echo "⚠️  KVM not available - using slower emulation mode"\n\
+  echo "⚠️  KVM not available - scaling down to fit cloud resource sandbox"\n\
   KVM_ARG=""\n\
   CPU_ARG="qemu64"\n\
-  MEMORY="2G"\n\
-  SMP_CORES=2\n\
+  # ✅ FIX 2: Dropped down to 300M and 1 Core to fit inside Renders 512MB limits\n\
+  MEMORY="300M"\n\
+  SMP_CORES=1\n\
 fi\n\
 \n\
 # Download ISO if needed\n\
@@ -63,7 +65,7 @@ fi\n\
 \n\
 echo "⚙️ Starting Android VM with ${SMP_CORES} CPU cores and ${MEMORY} RAM"\n\
 \n\
-# Start QEMU with Android-compatible architecture settings\n\
+# Start QEMU with Android-optimized architecture settings\n\
 qemu-system-x86_64 \\\n\
   $KVM_ARG \\\n\
   -machine q35,accel=kvm:tcg \\\n\
@@ -87,7 +89,7 @@ websockify --web /novnc 6080 localhost:5900 &\n\
 echo "===================================================="\n\
 echo "🌐 Connect via Web Browser: http://localhost:6080"\n\
 echo "🔌 Connect via ADB (Android Debug Bridge): localhost:5555"\n\
-echo "❗ First boot instruction: Select 'Installation - Install Android-x86 to harddisk'"\n\
+echo "❗ First boot instruction: Select Installation - Install Android-x86 to harddisk"\n\
 echo "===================================================="\n\
 \n\
 tail -f /dev/null\n' > /start.sh && chmod +x /start.sh
